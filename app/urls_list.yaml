@@ -1,0 +1,157 @@
+---
+basic:
+  - name: get_nodes_config
+    url: api/system/v1/maglev/nodes/config
+    need: yes
+    title: DNAC Node Count
+  - name: get_config_count
+    url: dna/intent/api/v1/network-device/config/count
+    need: yes
+    title: Device Config Count
+  - name: get_maglev_packages
+    url: api/system/v1/maglev/packages
+    need: yes
+  - name: get_cisco_ise
+    url: api/v1/system/health/cisco-ise
+    need: yes
+  - name: get_ise_information
+    url: api/v1/aaa/ise/information
+    need: yes
+  - name: get_aaa
+    url: api/v1/aaa
+    need: yes
+  - name: get_device_count_byfamily
+    url: api/v1/network-device/count/family
+    need: yes
+  - name: get_swim_device
+    url: api/v1/device-image/device
+    need: yes
+  - name: get_swim_task
+    url: api/v1/image/task?sortOrder=asc
+    need: yes
+  - name: get_swim_task_count
+    url: api/v1/image/task/count
+    need: yes
+    title: SWIM Tasks Count
+  - name: get_pnp_device
+    url: dna/intent/api/v1/onboarding/pnp-device
+    need: yes
+  - name: get_top_physical
+    url: dna/intent/api/v1/topology/physical-topology
+    need: yes
+  - name: get_discovery_count
+    url: dna/intent/api/v1/discovery/count
+    need: yes
+    title: Discovery Count
+  - name: get_backup_history
+    url: api/system/v1/maglev/backup/history
+    need: yes
+    title: Backup Count
+  - name: get_interfaces_ospf
+    url: dna/intent/api/v1/interface/ospf
+    need: yes
+  - name: get_top_vlan_names
+    url: dna/intent/api/v1/topology/vlan/vlan-names
+    need: yes
+    title: Vlan Count
+  - name: get_template
+    url: dna/intent/api/v1/template-programmer/template
+    need: yes
+  - name: get_template_project
+    url: dna/intent/api/v1/template-programmer/project
+    need: yes
+  - name: get_top_site
+    url: dna/intent/api/v1/topology/site-topology
+    need: yes
+  - name: get_site_count
+    url: dna/intent/api/v1/site/count
+    need: yes
+    title: Site Count
+  - name: get_setting_network
+    url: dna/intent/api/v1/network
+    need: yes
+  - name: get_setting_credential
+    url: dna/intent/api/v1/device-credential
+    need: yes
+  - name: get_sda_global_pool
+    url: dna/intent/api/v1/global-pool
+    need: yes
+    title: Global Pool Count
+  - name: get_interfaces_count
+    url: dna/intent/api/v1/interface/count
+    need: yes
+    title: Interface Count
+  - name: get_devices_count
+    url: dna/intent/api/v1/network-device/count
+    need: yes
+    title: Device Count
+  - name: get_top_site
+    url: dna/intent/api/v1/topology/site-topology
+    need: yes
+  - name: get_siteprofile
+    url: api/v1/siteprofile?offset=1&limit=500
+    need: yes
+  - name: get_devices_config
+    url: dna/intent/api/v1/network-device/config
+    need: yes
+
+loop:
+  - name: get_health_network
+    url: dna/intent/api/v1/network-health
+    need: yes
+  - name: get_health_site
+    url: dna/intent/api/v1/site-health
+    need: yes
+  - name: get_health_client
+    url: dna/intent/api/v1/client-health
+    need: yes
+
+devices:
+  site:
+    name: get_site_global
+    url: dna/intent/api/v1/site?name=Global
+    need: yes
+
+  site_membership_g:
+    name: site_membership_g
+    url: dna/intent/api/v1/membership
+    need: yes
+
+  devices:
+    name: get_devices
+    url: dna/intent/api/v1/network-device
+    need: yes
+    limit: 10
+
+
+get_site_profile:
+  name: get_site_profile
+  url: api/v1/siteprofile/site
+  need: yes
+
+sda:
+  control:
+      name: get_sda_control
+      url: dna/intent/api/v1/business/sda/control-plane-device
+      need: yes
+      rateLimit: 5
+
+  border:
+      name: get_sda_border
+      url: dna/intent/api/v1/business/sda/border-device
+      need: yes
+      rateLimit: 5
+
+command:
+  run:
+    name: post_command_run
+    url: dna/intent/api/v1/network-device-poller/cli/read-request
+    need: yes
+  task:
+    name: get_task_progress
+    url: dna/intent/api/v1/task
+    need: yes
+  file:
+    name: get_file_download
+    url: dna/intent/api/v1/file
+    need: yes
