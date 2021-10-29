@@ -59,7 +59,7 @@ def read_yaml(file_path):
 
 
 # get all urls need to capture
-urls_list = read_yaml("urls_list.yaml")
+urls_list = read_yaml(os.path.abspath(os.path.join(os.path.dirname(__file__), 'urls_list.yaml')))
 api_info["timestamp"] = _now.strftime("%Y%m%d_%H%M")
 
 
