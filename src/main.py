@@ -226,9 +226,10 @@ def new_task_1_run(urls, token):
 
 
 def run_shell(cmd_list):
+    _cmd = []
     for cmd in cmd_list:
         _output = subprocess.run(cmd, capture_output=True)
-        if _output.returncode:
+        if _output.returncode == 0:
             with open(f'output/{folder_path}/shell_{cmd}.txt', "w") as file:
                 file.write(_output.stdout.decode("utf-8"))
 
@@ -236,6 +237,8 @@ def run_shell(cmd_list):
             "command": cmd,
             "return_code": _output.returncode
         })
+        _cmd.append(cmd)
+    logging.info(f'Total shell command -{len(_cmd)} was runs..')
 
 
 @click.command()
