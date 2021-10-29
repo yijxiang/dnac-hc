@@ -1,18 +1,18 @@
+import concurrent.futures
 import datetime
-import time
 import json
 import logging
 import logging.config
 import math
 import os
-import calendar
+import subprocess
+import time
 
+import click
 import requests
 import urllib3
 import yaml
 from requests.auth import HTTPBasicAuth
-import concurrent.futures
-
 
 urllib3.disable_warnings()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,26 +21,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 api_info = {
     "api_concurrency_limit": 30,
     "apis": [],
+    "shell_commands": [],
     "response_status_code_20x": 0,
     "response_status_code_!20x": 0,
-    "deviceFamily": {},
     "fail_tasks": {}
 }
-dnac_info = {}
-deviceFamily = {
-    "familyList": ("Switches and Hubs", "Wireless Controller", "Routers", "Unified AP"),
-    "devices": [],
-    "top_nodes": {},
-    "top_links": [],
-    "site_top": {},
-    "sda_role": {},
-    "lisp": {},
-    "csv": [],
-    "design": [],
-    "inventory": [],
-    "health": {},
-    "dnac": []
-}
+dnac_config = {}
+folder_path = ""
 
 _now = datetime.datetime.now()
 _today = datetime.date.today()
@@ -66,63 +53,17 @@ def get_linux_time_last_days(days):
     return _timestamp
 
 
-def get_commands_per_type(data):
-    _commands = data.pop("commands")
-    _cmds_per_type = {}
-    for one_type, group_name_list in data.items():
-        _cmds = []
-        for one_group in group_name_list:
-            # _cmds.extend(_commands.get(one_group))
-            for one in _commands[one_group]:
-                if one:
-                    _cmds.append(one)
-        if _cmds:
-            _cmds_per_type[one_type] = list(set(_cmds))
-
-    return _cmds_per_type
-
-
 def read_yaml(file_path):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
 
 
-# get cmds for type: edge, border etc.
-commands_list = get_commands_per_type(read_yaml("commands_list.yaml"))
+# get all urls need to capture
 urls_list = read_yaml("urls_list.yaml")
-config = {}
-
-
-# get OS ENV or default value
-def get_dnac_config():
-    _data = dict(
-        name=os.getenv('dnac_name', "DNAC"),
-        base_url=os.getenv('dnac_base_url', "127.0.0.1"),
-        username=os.getenv('dnac_username', "maglev"),
-        password=os.getenv('dnac_password', "cisco"),
-        version=os.getenv('dnac_version', "1.3.3"),
-        verify=(os.getenv('dnac_verify', "False") == 'True')
-    )
-    return _data
-
-
-config["dnac"] = get_dnac_config()
-folder_path = f'{config["dnac"].get("name")}_{_now.strftime("%Y_%m_%d")}'
-
-if not os.path.exists(f'output/{folder_path}'):
-    os.makedirs(f'output/{folder_path}')
 api_info["timestamp"] = _now.strftime("%Y%m%d_%H%M")
 
-deviceFamily["dnac"].extend([{
-    "name": "collect_time",
-    "value": f'{_now.strftime("%A, %B %d, %Y %I:%M%p")}, as: {1000 * (calendar.timegm(_today.timetuple()))}'
-}, {
-    "name": "DNAC_name",
-    "value": config["dnac"].get("name")
-}])
 
-
-def get_x_auth_token(dnac=config["dnac"]):
+def get_x_auth_token(dnac=dnac_config):
     post_url = f"{dnac['base_url']}dna/system/api/v1/auth/token"
     headers = {'content-type': 'application/json'}
 
@@ -135,14 +76,14 @@ def get_x_auth_token(dnac=config["dnac"]):
         print(f"Error: {e}")
 
 
-def create_url(basic_path, path="", dnac=config["dnac"]):
+def create_url(basic_path, path="", dnac=dnac_config):
     if path:
         return f"{dnac['base_url']}{basic_path}/{path}"
     else:
         return f"{dnac['base_url']}{basic_path}"
 
 
-def new_request_basic(url, headers={}):
+def new_request_basic(url, token, headers={}):
     _success = True
     headers.update({"X-Auth-Token": token})
     start_time = time.perf_counter()
@@ -206,7 +147,38 @@ def new_task_1_urls():
     return _data
 
 
-def new_task_1_run(urls):
+@click.group(invoke_without_command=True)
+@click.pass_context
+def cli(ctx):
+    if not ctx.invoked_subcommand:
+        ctx.invoke(run)
+
+
+@click.command()
+@click.option("--name", prompt="please input the DNAC client name ", help="Client_name_location of DNAC.")
+@click.option("--url",  prompt="please input the IP or host of DNAC", help="host or IP of DNAC.")
+@click.option("--username", prompt="please input the username of DNAC", help="username of DNAC.")
+@click.password_option(prompt="please input the password of DNAC", help="password of DNAC.", confirmation_prompt=False)
+@click.option('--version', default="2.2.1", type=click.Choice(["1.3.3", "2.1.1", "2.1.2", "2.2.1", "2.2.2.3"]), prompt="please select the DNAC version", help="Verison of DNAC")
+@click.option('--ssl/--no-ssl', default=False, prompt="please select to enable SSL verify", help="Enable SSL verify or not")
+def init(name, url, username, password, version, ssl):
+    """ Step one: interactive create the config.yml file, please run : collector init, then the config.yml file will be created automatically in the folder
+    """
+    _config = {
+            "name": name,
+            "base_url": f'https://{url}/',
+            "username": username,
+            "password": password,
+            "version": version,
+            "verify": ssl
+        }
+    with open(f'config.yml', "w") as file:
+        yaml.dump(_config, file)
+        print("config.yml file created successfully, next step run command: collector")
+    return
+
+
+def new_task_1_run(urls, token):
     loop_index = 1
     offset = 0
     loop_no = math.ceil(len(urls) / api_info["api_concurrency_limit"])
@@ -216,7 +188,7 @@ def new_task_1_run(urls):
         while loop_index <= loop_no:
             _time = time.perf_counter()
             for url in urls[slice(offset, loop_index * api_info["api_concurrency_limit"])]:
-                futures.append(executor.submit(new_request_basic, url=url))
+                futures.append(executor.submit(new_request_basic, url=url, token=token))
 
             for future in concurrent.futures.as_completed(futures):
                 _v = future.result()
@@ -235,34 +207,73 @@ def new_task_1_run(urls):
 
         if global_id:
             _url = urls_list["devices"]["site_membership_g"]
-            futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}/{global_id}', "name": _url["name"]}))
+            futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}/{global_id}', "name": _url["name"]}, token=token))
             for i in concurrent.futures.as_completed(futures):
                 pass
 
         if _devices_count > 0:
-            _url = urls_list["devices"]["devices"]
+            _url = urls_list["devices"]["device_list"]
             for i in range(math.ceil(int(_devices_count)/500)):
-                futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*500+1)}&limit=500', "name": f'{_url["name"]}_{str(i)}'}))
+                futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*500+1)}&limit=500', "name": f'{_url["name"]}_{str(i)}'}, token=token))
+            for i in concurrent.futures.as_completed(futures):
+                pass
+
+            _url = urls_list["devices"]["device_health"]
+            for i in range(math.ceil(int(_devices_count)/1000)):
+                futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*1000+1)}&limit=1000', "name": f'{_url["name"]}_{str(i)}'}, token=token))
             for i in concurrent.futures.as_completed(futures):
                 pass
 
 
-def new_main():
-    global token
+def run_shell(cmd_list):
+    for cmd in cmd_list:
+        _output = subprocess.run(cmd, capture_output=True)
+        if _output.returncode:
+            with open(f'output/{folder_path}/shell_{cmd}.txt', "w") as file:
+                file.write(_output.stdout.decode("utf-8"))
+
+        api_info["shell_commands"].append({
+            "command": cmd,
+            "return_code": _output.returncode
+        })
+
+
+@click.command()
+def run():
+    """ Step two: run this command to capture all commands : collector
+    """
+    # get all dnac info from config.yml  file
+    global folder_path, dnac_config
+    if not os.path.isfile('config.yml'):
+        print("config.yml not exist, please create it first using command: collector init")
+        return
+    else:
+        # print("file exist")
+        with open('config.yml') as f:
+            dnac_config.update(yaml.load(f, Loader=yaml.FullLoader))
+
+    folder_path = dnac_config.get("name") + "_" + _now.strftime("%Y%m%d-%H%M%S")
+
+    if not os.path.exists(f'output/{folder_path}'):
+        os.makedirs(f'output/{folder_path}')
+
     _csv = {}
-    logging.info(f"Start collect information of this DNAC: {config['dnac']['name']}")
+    logging.info(f"Start collect information of this DNAC: {dnac_config['name']}")
     start_time = time.perf_counter()
-    token = get_x_auth_token()
+    token = get_x_auth_token(dnac_config)
 
     # task
-    _url = new_task_1_urls()
-    new_task_1_run(_url)
+    # _url = new_task_1_urls()
+    # new_task_1_run(_url, token)
+    run_shell([i.get("command", "") for i in urls_list.get("shell", "")])
 
     end_time = time.perf_counter()
-    dnac_info.update({"config": config, "commands_list": commands_list, "urls_list": urls_list})
+    dnac_config.pop("username")
+    dnac_config.pop("password")
+    _dnac_info = {"config": dnac_config, "urls_list": urls_list}
 
     with open(f'output/{folder_path}/' + 'DNAC info.json', 'w') as outfile:
-        json.dump(dnac_info, outfile, indent=4)
+        json.dump(_dnac_info, outfile, indent=4)
     with open(f'output/{folder_path}/' + 'API info.json', 'w') as outfile:
         json.dump(api_info, outfile, indent=4)
     print(f"Elapsed run total time: {end_time - start_time} seconds.")
@@ -270,4 +281,10 @@ def new_main():
 
 
 if __name__ == "__main__":
-    new_main()
+    cli.add_command(init)
+    cli.add_command(run)
+    cli()
+
+
+
+

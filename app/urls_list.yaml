@@ -94,6 +94,21 @@ basic:
   - name: get_devices_config
     url: dna/intent/api/v1/network-device/config
     need: yes
+  - name: get_issues
+    url: dna/intent/api/v1/issues
+    need: yes
+  - name: get_dhcp_dns
+    url: dna/intent/api/v1/network
+    need: yes
+  - name: get_pnp_count
+    url: dna/intent/api/v1/onboarding/pnp-device/count
+    need: yes
+  - name: get_dnac_release
+    url: dna/intent/api/v1/dnac-release
+    need: yes
+  - name: get_dnac_node_config
+    url: dna/intent/api/v1/nodes-config
+    need: yes
 
 loop:
   - name: get_health_network
@@ -117,12 +132,17 @@ devices:
     url: dna/intent/api/v1/membership
     need: yes
 
-  devices:
-    name: get_devices
+  device_list:
+    name: get_device_list
     url: dna/intent/api/v1/network-device
     need: yes
     limit: 10
 
+  device_health:
+    name: get_device_health
+    url: dna/intent/api/v1/device-health
+    need: yes
+    limit: 1000
 
 get_site_profile:
   name: get_site_profile
@@ -155,3 +175,7 @@ command:
     name: get_file_download
     url: dna/intent/api/v1/file
     need: yes
+
+shell:
+  - name: get_timezone
+    command: timedatectl
