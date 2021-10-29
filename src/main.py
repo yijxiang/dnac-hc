@@ -266,8 +266,8 @@ def run():
     token = get_x_auth_token(dnac_config)
 
     # task
-    # _url = new_task_1_urls()
-    # new_task_1_run(_url, token)
+    _url = new_task_1_urls()
+    new_task_1_run(_url, token)
     run_shell([i.get("command", "") for i in urls_list.get("shell", "")])
 
     end_time = time.perf_counter()
