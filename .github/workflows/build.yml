@@ -17,7 +17,7 @@ jobs:
       with:
         path: src
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: src/dist/dnac-hc
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: src/dist/dnac-hc
