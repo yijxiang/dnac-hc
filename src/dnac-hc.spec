@@ -5,7 +5,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['/dnac-hc/src'],
+             pathex=['.'],
              binaries=[],
              datas=[('urls_list.yaml', '.')],
              hiddenimports=[],
