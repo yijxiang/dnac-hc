@@ -237,7 +237,7 @@ def new_task_1_run(urls, token):
 def run_shell(cmd_list):
     _cmd = []
     for cmd in cmd_list:
-        _output = subprocess.run(cmd, capture_output=True)
+        _output = subprocess.run(cmd, capture_output=True, shell=True)
         if _output.returncode == 0:
             with open(f'output/{folder_path}/shell_{cmd}.txt', "w") as file:
                 file.write(_output.stdout.decode("utf-8"))
@@ -292,7 +292,7 @@ def run():
     print(f'Total APIs count successfully/failures：{api_info.get("response_status_code_20x")}/{api_info.get("response_status_code_!20x")}')
 
     # make tar file
-    make_tarfile(f'output/{folder_path}', f'output/{folder_path}')
+    make_tarfile(f'output/dnac-hc_{folder_path}.tar.gz', f'output/{folder_path}')
 
 
 if __name__ == "__main__":
