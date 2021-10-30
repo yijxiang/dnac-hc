@@ -13,6 +13,8 @@ import requests
 import urllib3
 import yaml
 from requests.auth import HTTPBasicAuth
+import tarfile
+
 
 urllib3.disable_warnings()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,9 +30,15 @@ api_info = {
 }
 dnac_config = {}
 folder_path = ""
+dnac_maglev_path = "/data/tmp/dnac_aura/hc"
 
 _now = datetime.datetime.now()
 _today = datetime.date.today()
+
+
+def make_tarfile(output_filename, source_dir):
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))
 
 
 def get_linux_time_last_days(days):
@@ -99,7 +107,7 @@ def new_request_basic(url, token, headers={}):
         if url["name"] in api_info["fail_tasks"].keys():
             api_info["fail_tasks"].pop(url["name"])
         logging.info(f'{url["name"]} success')
-        print("!", end='')
+        # print("!", end='')
     else:
         api_info["response_status_code_!20x"] += 1
         api_info["fail_tasks"][url["name"]] = {
@@ -107,7 +115,7 @@ def new_request_basic(url, token, headers={}):
             "task": "request_basic"
         }
         logging.error(f'{url["name"]} has {response.status_code}')
-        print(".", end='')
+        # print(".", end='')
         _success = False
 
     api_info["apis"].append(
@@ -156,13 +164,13 @@ def cli(ctx):
 
 @click.command()
 @click.option("--name", prompt="please input the DNAC client name ", help="Client_name_location of DNAC.")
-@click.option("--url",  prompt="please input the IP or host of DNAC", help="host or IP of DNAC.")
-@click.option("--username", prompt="please input the username of DNAC", help="username of DNAC.")
-@click.password_option(prompt="please input the password of DNAC", help="password of DNAC.", confirmation_prompt=False)
-@click.option('--version', default="2.2.1", type=click.Choice(["1.3.3", "2.1.1", "2.1.2", "2.2.1", "2.2.2.3"]), prompt="please select the DNAC version", help="Verison of DNAC")
-@click.option('--ssl/--no-ssl', default=False, prompt="please select to enable SSL verify", help="Enable SSL verify or not")
-def init(name, url, username, password, version, ssl):
-    """ Step one: interactive create the config.yml file, please run : collector init, then the config.yml file will be created automatically in the folder
+@click.option("--url", default="localhost", prompt="please input the IP of DNAC", help="host or IP of DNAC.")
+@click.option("--username", default="admin", prompt="please input the username for access DNAC GUI", help="username of DNAC.")
+@click.password_option(prompt="please input the password for access DNAC GUI", help="password of DNAC.", confirmation_prompt=False)
+# @click.option('--version', default="2.2.1", type=click.Choice(["1.3.3", "2.1.1", "2.1.2", "2.2.1", "2.2.2.3"]), prompt="please select the DNAC version", help="Verison of DNAC")
+# @click.option('--ssl/--no-ssl', default=False, prompt="please select to enable SSL verify", help="Enable SSL verify or not")
+def init(name, url, username, password, version="", ssl=False):
+    """ Step one: interactive create the config.yml file, please run : ./dnac-hc init, then the config.yml file will be created automatically in the folder
     """
     _config = {
             "name": name,
@@ -174,7 +182,7 @@ def init(name, url, username, password, version, ssl):
         }
     with open(f'config.yml', "w") as file:
         yaml.dump(_config, file)
-        print("config.yml file created successfully, next step run command: collector")
+        print("config.yml file created successfully, next step run command: ./dnac-hc")
     return
 
 
@@ -197,10 +205,9 @@ def new_task_1_run(urls, token):
                 if "get_devices_count" in _v.get("name"):
                     _devices_count = _v.get("v").get("response")
 
-            print(f'Time need : {time.perf_counter() - _time}')
-            logging.info(f"Finished in Task 1 for Loop NO.: {loop_index}")
             offset += api_info["api_concurrency_limit"]
-            print(f'index is {loop_index}, loop is {loop_no}')
+            print(f'Now run index/total loops {loop_index}/{loop_no}, it took: {time.perf_counter() - _time}')
+            logging.info("Finished this task........")
             if loop_index < loop_no:
                 time.sleep(60)
             loop_index += 1
@@ -243,12 +250,12 @@ def run_shell(cmd_list):
 
 @click.command()
 def run():
-    """ Step two: run this command to capture all commands : collector
+    """ Step two: run this command to capture all commands : ./dnac-hc
     """
     # get all dnac info from config.yml  file
     global folder_path, dnac_config
     if not os.path.isfile('config.yml'):
-        print("config.yml not exist, please create it first using command: collector init")
+        print("config.yml not exist, please create it first using command: ./dnac-hc init")
         return
     else:
         # print("file exist")
@@ -281,6 +288,9 @@ def run():
         json.dump(api_info, outfile, indent=4)
     print(f"Elapsed run total time: {end_time - start_time} seconds.")
     print(f'Total APIs status code 20x/其他：{api_info.get("response_status_code_20x")}/{api_info.get("response_status_code_!20x")}')
+
+    # make tar file
+    make_tarfile(f'output/{folder_path}', f'output/{folder_path}')
 
 
 if __name__ == "__main__":

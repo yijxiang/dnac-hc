@@ -177,5 +177,8 @@ command:
     need: yes
 
 shell:
-  - name: get_timezone
+  - name: ubuntu_timedatectl
     command: timedatectl
+  - name: ubuntu_hostname
+    command: hostname -f
+
