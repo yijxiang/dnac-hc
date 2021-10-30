@@ -125,55 +125,19 @@ devices:
   site:
     name: get_site_global
     url: dna/intent/api/v1/site?name=Global
-    need: yes
 
   site_membership_g:
     name: site_membership_g
     url: dna/intent/api/v1/membership
-    need: yes
 
   device_list:
     name: get_device_list
     url: dna/intent/api/v1/network-device
     need: yes
-    limit: 10
 
   device_health:
     name: get_device_health
     url: dna/intent/api/v1/device-health
-    need: yes
-    limit: 1000
-
-get_site_profile:
-  name: get_site_profile
-  url: api/v1/siteprofile/site
-  need: yes
-
-sda:
-  control:
-      name: get_sda_control
-      url: dna/intent/api/v1/business/sda/control-plane-device
-      need: yes
-      rateLimit: 5
-
-  border:
-      name: get_sda_border
-      url: dna/intent/api/v1/business/sda/border-device
-      need: yes
-      rateLimit: 5
-
-command:
-  run:
-    name: post_command_run
-    url: dna/intent/api/v1/network-device-poller/cli/read-request
-    need: yes
-  task:
-    name: get_task_progress
-    url: dna/intent/api/v1/task
-    need: yes
-  file:
-    name: get_file_download
-    url: dna/intent/api/v1/file
     need: yes
 
 shell:

@@ -207,7 +207,7 @@ def new_task_1_run(urls, token):
 
             offset += api_info["api_concurrency_limit"]
             print(f'Now run index/total loops {loop_index}/{loop_no}, it took: {time.perf_counter() - _time}')
-            logging.info("Finished this task........")
+            logging.info("Finished this task........, wait 60 seconds...")
             if loop_index < loop_no:
                 time.sleep(60)
             loop_index += 1
@@ -220,16 +220,18 @@ def new_task_1_run(urls, token):
 
         if _devices_count > 0:
             _url = urls_list["devices"]["device_list"]
-            for i in range(math.ceil(int(_devices_count)/500)):
-                futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*500+1)}&limit=500', "name": f'{_url["name"]}_{str(i)}'}, token=token))
-            for i in concurrent.futures.as_completed(futures):
-                pass
+            if _url.get("need"):
+                for i in range(math.ceil(int(_devices_count)/500)):
+                    futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*500+1)}&limit=500', "name": f'{_url["name"]}_{str(i)}'}, token=token))
+                for i in concurrent.futures.as_completed(futures):
+                    pass
 
             _url = urls_list["devices"]["device_health"]
-            for i in range(math.ceil(int(_devices_count)/1000)):
-                futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*1000+1)}&limit=1000', "name": f'{_url["name"]}_{str(i)}'}, token=token))
-            for i in concurrent.futures.as_completed(futures):
-                pass
+            if _url.get("need"):
+                for i in range(math.ceil(int(_devices_count)/1000)):
+                    futures.append(executor.submit(new_request_basic, url={"url": f'{_url["url"]}?offset={str(i*1000+1)}&limit=1000', "name": f'{_url["name"]}_{str(i)}'}, token=token))
+                for i in concurrent.futures.as_completed(futures):
+                    pass
 
 
 def run_shell(cmd_list):
@@ -286,8 +288,8 @@ def run():
         json.dump(_dnac_info, outfile, indent=4)
     with open(f'output/{folder_path}/' + 'API info.json', 'w') as outfile:
         json.dump(api_info, outfile, indent=4)
-    print(f"Elapsed run total time: {end_time - start_time} seconds.")
-    print(f'Total APIs status code 20x/其他：{api_info.get("response_status_code_20x")}/{api_info.get("response_status_code_!20x")}')
+    print(f"Elapsed total time: {end_time - start_time} seconds.")
+    print(f'Total APIs count successfully/failures：{api_info.get("response_status_code_20x")}/{api_info.get("response_status_code_!20x")}')
 
     # make tar file
     make_tarfile(f'output/{folder_path}', f'output/{folder_path}')
